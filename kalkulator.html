@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Szállítási díj kalkulátor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      padding: 20px;
+    }
+    .calc-box {
+      background: #fff;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    button {
+      background: #e30613;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    #eredmeny {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="calc-box">
+  <h3>Szállítási díj kalkulátor</h3>
+  <input id="cim" type="text" placeholder="Írd be a címed (pl. 1051 Budapest, Nádor utca 1.)">
+  <label>
+    <input type="checkbox" id="daruzas"> Daruzással kérem (+15 000 Ft)
+  </label>
+  <button onclick="kalkulal()">Számold ki</button>
+  <p id="eredmeny"></p>
+</div>
+
+<script>
+const sajatCim = "2300 Ráckeve, Ady Endre u. 36.";
+const apiUrl = "https://szallitas.netlify.app/.netlify/functions/get-distance";
+const kmDij = 200;
+const daruzasFelár = 15000;
+
+async function kalkulal() {
+  const celCim = document.getElementById('cim').value.trim();
+  const daruzas = document.getElementById('daruzas').checked;
+  const out = document.getElementById('eredmeny');
+
+  if (!celCim) return alert("Kérlek, add meg a címed!");
+  out.textContent = "Számolás folyamatban…";
+
+  try {
+    const res = await fetch(`${apiUrl}?origin=${encodeURIComponent(sajatCim)}&destination=${encodeURIComponent(celCim)}`);
+    const data = await res.json();
+
+    if (!data.rows || !data.rows[0] || data.rows[0].elements[0].status !== "OK") {
+      out.textContent = "A címet nem sikerült beazonosítani.";
+      return;
+    }
+
+    const tavMeter = data.rows[0].elements[0].distance.value;
+    const tavKm = tavMeter / 1000;
+
+    const osszKm = tavKm * 2; // oda-vissza
+    let dij = Math.ceil(osszKm) * kmDij;
+
+    if (daruzas) dij += daruzasFelár;
+
+    out.textContent = `Távolság: ${osszKm.toFixed(1)} km (oda-vissza) – Szállítási díj: ${dij.toLocaleString('hu-HU')} Ft`;
+  } catch (err) {
+    out.textContent = "Hiba történt. Próbáld újra később.";
+    console.error(err);
+  }
+}
+</script>
+
+</body>
+</html>
